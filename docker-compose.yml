@@ -4,8 +4,8 @@ services:
     container_name: open-gateway
 
     build:
-      context: .
-      dockerfile: Open-Gateway/Dockerfile
+      context: ./Open-Gateway
+      dockerfile: Dockerfile
 
     environment:
       ASPNETCORE_URLS: "http://+:8080"
@@ -13,10 +13,3 @@ services:
 
     ports:
       - "8004:8080"
-
-    networks:
-      - vms-network
-
-networks:
-  vms-network:
-    driver: bridge

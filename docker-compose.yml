@@ -4,7 +4,7 @@ services:
     container_name: open-gateway
 
     build:
-      context: ./Open-Gateway
+      context: .
       dockerfile: Dockerfile
 
     environment:

@@ -15,4 +15,4 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
-ENTRYPOINT ["dotnet", "OpenGateway.dll"]
+ENTRYPOINT ["dotnet", "Open-Gateway.dll"]

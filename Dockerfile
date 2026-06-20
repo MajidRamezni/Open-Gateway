@@ -3,8 +3,8 @@ WORKDIR /app
 
 COPY . .
 
-RUN dotnet restore Open-Gateway.csproj
-RUN dotnet publish Open-Gateway.csproj -c Release -o /publish
+RUN dotnet restore Open-Gateway/Open-Gateway.csproj
+RUN dotnet publish Open-Gateway/Open-Gateway.csproj -c Release -o /publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app

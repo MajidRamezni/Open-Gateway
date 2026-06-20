@@ -1,13 +1,12 @@
 ﻿FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY Open-Gateway/Open-Gateway.csproj Open-Gateway/
-COPY Open-Gateway/ Open-Gateway/
+COPY . .
 
-WORKDIR /src/Open-Gateway
+RUN ls -R
 
-RUN dotnet restore
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet restore Open-Gateway/Open-Gateway.csproj
+RUN dotnet publish Open-Gateway/Open-Gateway.csproj -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app

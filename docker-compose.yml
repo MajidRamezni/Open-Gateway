@@ -1,14 +1,19 @@
 services:
 
   open-gateway:
-    image: registry.makan-system.ir/open-gateway:latest
     container_name: open-gateway
+
+    build:
+      context: .
+      dockerfile: Dockerfile
 
     environment:
       ASPNETCORE_URLS: "http://+:8080"
       ASPNETCORE_ENVIRONMENT: "Development"
+
     ports:
       - "8004:8080"
+
     networks:
       - vms-network
 

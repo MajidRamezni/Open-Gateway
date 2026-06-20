@@ -1,14 +1,14 @@
 ﻿FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
+WORKDIR /app
 
 COPY . .
 
-RUN dotnet restore Open-Gateway/Open-Gateway.csproj
-RUN dotnet publish Open-Gateway/Open-Gateway.csproj -c Release -o /app/publish
+RUN dotnet restore OpenGateway.csproj
+RUN dotnet publish OpenGateway.csproj -c Release -o /publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 
-COPY --from=build /app/publish .
+COPY --from=build /publish .
 
 ENTRYPOINT ["dotnet", "OpenGateway.dll"]

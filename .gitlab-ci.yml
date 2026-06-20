@@ -1,0 +1,118 @@
+image: mcr-mirror.liara.ir/dotnet/sdk:10.0
+
+variables:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  GIT_DEPTH: 1
+  BUILD_CONFIG: Release
+  SOLUTION_ROOT: Open-Gateway
+  IMAGE_NAME: open-gateway
+
+stages:
+  - build
+  - test
+  - deploy
+  - docker_push
+  - deploy_147
+
+# ✅ Smart cache (branch-aware + reusable)
+cache:
+  key:
+    files:
+      - $SOLUTION_ROOT/**/*.csproj
+  paths:
+    - .nuget/packages
+  policy: pull-push
+
+before_script:
+  - cd $SOLUTION_ROOT
+
+# 🔥 Build + Restore merged (بیشترین صرفه‌جویی زمان)
+build:
+  stage: build
+  script:
+    - dotnet build --configuration $BUILD_CONFIG
+  artifacts:
+    paths:
+      - $SOLUTION_ROOT/**/bin/
+    expire_in: 30 min
+
+# ✅ تست موازی با بیلد (needs فقط artifact می‌گیرد)
+test:
+  stage: test
+  needs: ["build"]
+  script:
+    - dotnet test --configuration $BUILD_CONFIG --no-build
+
+# 🚀 Deploy فقط روی main
+deploy:
+  stage: deploy
+  needs: ["build"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  script:
+    #    - dotnet pack DeviceManager.Plugin.csproj --configuration $BUILD_CONFIG --no-build --output nupkgs
+    - dotnet nuget push "nupkgs/*.nupkg" --source "$NUGET_PUSH" --api-key "$NUGET_API_KEY"
+  environment:
+    name: staging
+  when: manual
+
+docker_push:
+  stage: docker_push
+  tags:
+    - shell
+  
+  before_script:
+    - echo $NEXUS_DOCKER_REGISTRY
+    - echo "$NEXUS_DOCKER_PASSWORD" | docker login $NEXUS_DOCKER_REGISTRY -u "$NEXUS_DOCKER_USERNAME" --password-stdin
+
+  script:
+    - IMAGE_BASE=$NEXUS_DOCKER_REGISTRY/$IMAGE_NAME
+    - COMMIT_TAG=$CI_COMMIT_SHORT_SHA
+    - BRANCH_TAG=$CI_COMMIT_REF_SLUG
+    - REGISTRY_IP=$(getent hosts registry.makan-system.ir | awk '{ print $1 }')
+    - echo $REGISTRY_IP
+    - >
+      docker build 
+      --network host
+      --add-host registry.makan-system.ir:${REGISTRY_IP} 
+      -t $IMAGE_BASE:$COMMIT_TAG 
+      -t $IMAGE_BASE:$BRANCH_TAG 
+      ./$SOLUTION_ROOT
+    - docker push "${IMAGE_BASE}:${COMMIT_TAG}"
+    - docker push "${IMAGE_BASE}:${BRANCH_TAG}"
+    # 👇 اگر main بود، تگ latest هم بزن
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "main" ]; then
+        docker tag $IMAGE_BASE:$BRANCH_TAG $IMAGE_BASE:latest
+        docker push $IMAGE_BASE:latest
+        echo "✅ pushed: $IMAGE_BASE:latest"
+      fi
+
+docker_deploy:
+  stage: deploy_147
+  tags:
+    - shell
+  needs: [docker_push] 
+  when: manual
+  
+  before_script:
+    - mkdir -p ~/.ssh
+    - cp "$DEPLOY_147_SSH_PRIVATE_KEY" ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+  script:
+    # ← مرحله دیباگ: مطمئن شوید متغیرها مقدار دارند
+    - echo "DEBUG USER='${DEPLOY_147_USER}'"
+    - echo "DEBUG HOST='${DEPLOY_147_HOST}'"
+    - echo "DEBUG REGISTRY='${NEXUS_DOCKER_REGISTRY}'"
+    - echo "DEBUG IMAGE='${IMAGE_NAME}'"
+    - IMAGE="${NEXUS_DOCKER_REGISTRY}/${IMAGE_NAME}:latest"
+    - |
+      ssh -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        "${DEPLOY_147_USER}@${DEPLOY_147_HOST}" \
+        "docker login '${NEXUS_DOCKER_REGISTRY}' \
+           -u '${NEXUS_DOCKER_USERNAME}' \
+           --password-stdin <<< '${NEXUS_DOCKER_PASSWORD}' && \
+         docker pull '${IMAGE}' && \
+         docker compose up -d --no-deps $IMAGE_NAME "

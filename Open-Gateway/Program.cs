@@ -2,7 +2,7 @@
 
 using CurlDotNet;
 using Microsoft.AspNetCore.Mvc;
-using Open_Gateway;
+using Open_Gateway.Service;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,20 +26,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapPost("/proxy", async ([FromBody] ProxyRequest request) =>
-{
-    if (string.IsNullOrWhiteSpace(request.Command))
-        return Results.BadRequest("Command cannot be empty.");
-
-    try
-    {
-        var result = await Curl.ExecuteAsync(request.Command);
-        return Results.Ok(new { success = true, data = result });
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Execution failed: {ex.Message}");
-    }
-});
+app.MapProxyEndpoints();
 
 app.Run();

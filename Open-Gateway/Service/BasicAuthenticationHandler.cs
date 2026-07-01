@@ -9,13 +9,18 @@ namespace Open_Gateway.Service;
 
 public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
+    private readonly string _username;
+    private readonly string _password;
     public BasicAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
         System.Text.Encodings.Web.UrlEncoder encoder,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+         IConfiguration configuration)
         : base(options, logger, encoder)
     {
+        _username = configuration["BasicAuth:Username"]!;
+        _password = configuration["BasicAuth:Password"]!;
     }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -33,7 +38,7 @@ public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSc
             var username = credentials[0];
             var password = credentials[1];
 
-            if (username != "admin" || password != "123456")
+            if (username != _username || password != _password)
                 return Task.FromResult(AuthenticateResult.Fail("Invalid username or password"));
 
             var claims = new[]

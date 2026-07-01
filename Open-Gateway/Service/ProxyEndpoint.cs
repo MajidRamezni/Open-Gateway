@@ -7,7 +7,8 @@ public static class ProxyEndpoint
 {
     public static IEndpointRouteBuilder MapProxyEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/proxy", ExecuteProxy);
+        app.MapPost("/proxy", ExecuteProxy)
+    .RequireAuthorization();
 
         return app;
     }
